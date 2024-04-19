@@ -1,4 +1,4 @@
-import {unstable_noStore as noStore} from "next/cache"
+import { unstable_noStore as noStore } from 'next/cache';
 import { db } from './db';
 import { Prisma } from '@prisma/client';
 import {
@@ -63,14 +63,18 @@ export async function fetchCardData() {
     // You can probably combine these into a single SQL query
     // However, we are intentionally splitting them to demonstrate
     // how to initialize multiple queries in parallel with JS.
-    const invoiceCountPromise: Prisma.PrismaPromise<{ count: number }> =
-      db.$queryRaw`SELECT COUNT(*) FROM invoices`;
-    const customerCountPromise: Prisma.PrismaPromise<{ count: number }> =
-      db.$queryRaw`SELECT COUNT(*) FROM customers`;
-    const invoiceStatusPromise: Prisma.PrismaPromise<{
-      paid: number;
-      pending: number;
-    }> = db.$queryRaw`SELECT
+    const invoiceCountPromise: Prisma.PrismaPromise<
+      { count: number }[]
+    > = db.$queryRaw`SELECT COUNT(*) FROM invoices`;
+    const customerCountPromise: Prisma.PrismaPromise<
+      { count: number }[]
+    > = db.$queryRaw`SELECT COUNT(*) FROM customers`;
+    const invoiceStatusPromise: Prisma.PrismaPromise<
+      {
+        paid: number;
+        pending: number;
+      }[]
+    > = db.$queryRaw`SELECT
          SUM(CASE WHEN status = 'paid' THEN amount ELSE 0 END) AS "paid",
          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
          FROM invoices`;
@@ -81,10 +85,10 @@ export async function fetchCardData() {
       invoiceStatusPromise,
     ]);
 
-    const numberOfInvoices = Number(data[0].count ?? '0');
-    const numberOfCustomers = Number(data[1].count ?? '0');
-    const totalPaidInvoices = formatCurrency(data[2].paid ?? '0');
-    const totalPendingInvoices = formatCurrency(data[2].pending ?? '0');
+    const numberOfInvoices = Number(data[0][0].count ?? '0');
+    const numberOfCustomers = Number(data[1][0].count ?? '0');
+    const totalPaidInvoices = formatCurrency(data[2][0].paid ?? '0');
+    const totalPendingInvoices = formatCurrency(data[2][0].pending ?? '0');
 
     return {
       numberOfCustomers,
@@ -119,11 +123,11 @@ export async function fetchFilteredInvoices(
       FROM invoices
       JOIN customers ON invoices.customer_id = customers.id
       WHERE
-        customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`} OR
-        invoices.amount::text ILIKE ${`%${query}%`} OR
-        invoices.date::text ILIKE ${`%${query}%`} OR
-        invoices.status ILIKE ${`%${query}%`}
+        customers.name LIKE ${`%${query}%`} OR
+        customers.email LIKE ${`%${query}%`} OR
+        invoices.amount LIKE ${`%${query}%`} OR
+        invoices.date LIKE ${`%${query}%`} OR
+        invoices.status LIKE ${`%${query}%`}
       ORDER BY invoices.date DESC
       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
     `;
@@ -138,15 +142,15 @@ export async function fetchFilteredInvoices(
 export async function fetchInvoicesPages(query: string) {
   noStore();
   try {
-    const count:{ count: number}[] = await db.$queryRaw`SELECT COUNT(*)
+    const count: { count: number }[] = await db.$queryRaw`SELECT COUNT(*) AS 'count'
     FROM invoices
     JOIN customers ON invoices.customer_id = customers.id
     WHERE
-      customers.name ILIKE ${`%${query}%`} OR
-      customers.email ILIKE ${`%${query}%`} OR
-      invoices.amount::text ILIKE ${`%${query}%`} OR
-      invoices.date::text ILIKE ${`%${query}%`} OR
-      invoices.status ILIKE ${`%${query}%`}
+      customers.name LIKE ${`%${query}%`} OR
+      customers.email LIKE ${`%${query}%`} OR
+      invoices.amount LIKE ${`%${query}%`} OR
+      invoices.date LIKE ${`%${query}%`} OR
+      invoices.status LIKE ${`%${query}%`}
   `;
 
     const totalPages = Math.ceil(Number(count[0].count) / ITEMS_PER_PAGE);
@@ -213,8 +217,8 @@ export async function fetchFilteredCustomers(query: string) {
 		FROM customers
 		LEFT JOIN invoices ON customers.id = invoices.customer_id
 		WHERE
-		  customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`}
+		  customers.name LIKE ${`%${query}%`} OR
+        customers.email LIKE ${`%${query}%`}
 		GROUP BY customers.id, customers.name, customers.email, customers.image_url
 		ORDER BY customers.name ASC
 	  `;

@@ -14,22 +14,22 @@ datasource db {
 }
 
 model Users {
-  id       String @id @default(cuid())
+  id       String @id @default(uuid()) 
   name     String @db.VarChar(255)
   email    String
   password String
 }
 
 model Invoices {
-  id          String   @id @default(cuid())
+  id          String @id @default(uuid())
   customer_id String
   amount      Int
-  status      String   @db.VarChar(255)
+  status      String @db.VarChar(255)
   date        String
 }
 
 model Customers {
-  id        String @id @default(cuid())
+  id        String @id @default(uuid())
   name      String @db.VarChar(255)
   email     String @db.VarChar(255)
   image_url String @db.VarChar(255)
